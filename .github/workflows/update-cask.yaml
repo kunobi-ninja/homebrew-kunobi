@@ -1,0 +1,74 @@
+name: Update Cask Formula
+
+on:
+  repository_dispatch:
+    types: [update-cask]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (without v prefix)'
+        required: true
+
+jobs:
+  update-cask:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            VERSION="$DISPATCH_VERSION"
+          else
+            VERSION="$INPUT_VERSION"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Updating to version: $VERSION"
+
+      - name: Download DMG and calculate SHA256
+        id: sha
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          DMG_URL="https://r2.kunobi.ninja/v${VERSION}/Kunobi_${VERSION}_darwin_aarch64.dmg"
+
+          echo "Downloading: $DMG_URL"
+          curl -fSL "$DMG_URL" -o kunobi.dmg
+
+          SHA256=$(shasum -a 256 kunobi.dmg | cut -d ' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+
+      - name: Update Cask formula
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+        run: |
+          # Update version line
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" Casks/kunobi.rb
+
+          # Update sha256 line
+          sed -i "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Casks/kunobi.rb
+
+          echo "Updated Casks/kunobi.rb:"
+          cat Casks/kunobi.rb
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update Kunobi to v${{ steps.version.outputs.version }}"
+          title: "Update Kunobi to v${{ steps.version.outputs.version }}"
+          body: |
+            Automated update triggered by new stable release.
+
+            - **Version**: `${{ steps.version.outputs.version }}`
+            - **SHA256**: `${{ steps.sha.outputs.sha256 }}`
+            - **Download URL**: https://r2.kunobi.ninja/v${{ steps.version.outputs.version }}/Kunobi_${{ steps.version.outputs.version }}_darwin_aarch64.dmg
+          branch: update-${{ steps.version.outputs.version }}
+          base: main
