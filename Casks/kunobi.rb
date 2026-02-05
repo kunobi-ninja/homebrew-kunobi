@@ -2,7 +2,7 @@ cask "kunobi" do
   version "0.1.0-beta.20"
   sha256 "d724e18ced012757bab0351c9ef6e9749eaf56923c6a64f2bdbdaeb984f56e73"
 
-  url "https://r2.kunobi.ninja/v#{version}/Kunobi_#{version}_darwin_aarch64.dmg"
+  url "https://r2.kunobi.ninja/v#{version}/Kunobi_#{version}_darwin_aarch64.dmg?utm_source=brew"
   name "Kunobi"
   desc "Kubernetes dashboard and management tool"
   homepage "https://kunobi.ninja"
