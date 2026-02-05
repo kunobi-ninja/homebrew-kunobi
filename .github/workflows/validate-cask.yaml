@@ -1,0 +1,55 @@
+name: Validate Cask
+
+on:
+  pull_request:
+    paths:
+      - 'Casks/*.rb'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version, URL, and SHA256 from cask
+        id: cask
+        run: |
+          CASK_FILE="Casks/kunobi.rb"
+
+          VERSION=$(grep -E '^\s*version\s+"' "$CASK_FILE" | sed 's/.*version "\([^"]*\)".*/\1/')
+          SHA256=$(grep -E '^\s*sha256\s+"' "$CASK_FILE" | sed 's/.*sha256 "\([^"]*\)".*/\1/')
+
+          # Build URL from template
+          URL="https://r2.kunobi.ninja/v${VERSION}/Kunobi_${VERSION}_darwin_aarch64.dmg"
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+          echo "Version: $VERSION"
+          echo "Expected SHA256: $SHA256"
+          echo "URL: $URL"
+
+      - name: Download DMG
+        env:
+          URL: ${{ steps.cask.outputs.url }}
+        run: |
+          echo "Downloading: $URL"
+          curl -fSL "$URL" -o kunobi.dmg
+          ls -lh kunobi.dmg
+
+      - name: Verify SHA256
+        env:
+          EXPECTED_SHA256: ${{ steps.cask.outputs.sha256 }}
+        run: |
+          ACTUAL_SHA256=$(shasum -a 256 kunobi.dmg | cut -d ' ' -f1)
+
+          echo "Expected: $EXPECTED_SHA256"
+          echo "Actual:   $ACTUAL_SHA256"
+
+          if [ "$EXPECTED_SHA256" != "$ACTUAL_SHA256" ]; then
+            echo "❌ SHA256 mismatch!"
+            exit 1
+          fi
+
+          echo "✅ SHA256 verified successfully"
