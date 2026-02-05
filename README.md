@@ -16,8 +16,29 @@ brew install --cask kunobi
 
 ## Auto-Updates
 
-Kunobi has a built-in auto-updater that checks for new versions every 15 minutes.
+Kunobi has a built-in auto-updater that checks for new versions every.
 You don't need to run `brew upgrade` — the app will notify you when updates are available.
+
+### Homebrew Upgrade Behavior
+
+This cask has `auto_updates true`, which tells Homebrew "this app updates itself, don't include it in bulk upgrades."
+
+**Without explicitly naming the cask:**
+```bash
+brew outdated --cask          # won't list kunobi
+brew upgrade --cask           # won't upgrade kunobi (skips auto-updating apps)
+```
+
+**When you explicitly name it:**
+```bash
+brew upgrade kunobi           # upgrades anyway (you asked for it specifically)
+brew upgrade --cask kunobi    # same behavior
+```
+
+**To see all outdated casks including auto-updating ones:**
+```bash
+brew outdated --cask --greedy
+```
 
 ## Uninstallation
 
@@ -29,6 +50,12 @@ To also remove application data:
 
 ```bash
 brew uninstall --cask --zap kunobi
+```
+
+To remoce tap:
+
+```bash
+brew untap kunobi-ninja/kunobi
 ```
 
 ## Links
