@@ -5,7 +5,7 @@
 ## Installation
 
 ```bash
-brew tap zondax/kunobi
+brew tap kunobi-ninja/kunobi
 brew install --cask kunobi
 ```
 

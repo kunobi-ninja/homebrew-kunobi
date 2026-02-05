@@ -8,6 +8,9 @@ on:
       version:
         description: 'Version to update to (without v prefix)'
         required: true
+      sha256:
+        description: 'SHA256 of the darwin_aarch64.dmg'
+        required: true
 
 jobs:
   update-cask:
@@ -15,46 +18,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version
-        id: version
+      - name: Get version and sha256
+        id: params
         env:
           DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          DISPATCH_SHA256: ${{ github.event.client_payload.sha256 }}
           INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_SHA256: ${{ github.event.inputs.sha256 }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "repository_dispatch" ]; then
             VERSION="$DISPATCH_VERSION"
+            SHA256="$DISPATCH_SHA256"
           else
             VERSION="$INPUT_VERSION"
+            SHA256="$INPUT_SHA256"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Updating to version: $VERSION"
-
-      - name: Download DMG and calculate SHA256
-        id: sha
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          DMG_URL="https://r2.kunobi.ninja/v${VERSION}/Kunobi_${VERSION}_darwin_aarch64.dmg"
-
-          echo "Downloading: $DMG_URL"
-          curl -fSL "$DMG_URL" -o kunobi.dmg
-
-          SHA256=$(shasum -a 256 kunobi.dmg | cut -d ' ' -f1)
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "Updating to version: $VERSION"
           echo "SHA256: $SHA256"
 
       - name: Update Cask formula
         env:
-          VERSION: ${{ steps.version.outputs.version }}
-          SHA256: ${{ steps.sha.outputs.sha256 }}
+          VERSION: ${{ steps.params.outputs.version }}
+          SHA256: ${{ steps.params.outputs.sha256 }}
         run: |
-          # Update version line
           sed -i "s/version \".*\"/version \"${VERSION}\"/" Casks/kunobi.rb
-
-          # Update sha256 line
           sed -i "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Casks/kunobi.rb
-
           echo "Updated Casks/kunobi.rb:"
           cat Casks/kunobi.rb
 
@@ -62,13 +53,12 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Update Kunobi to v${{ steps.version.outputs.version }}"
-          title: "Update Kunobi to v${{ steps.version.outputs.version }}"
+          commit-message: "Update Kunobi to v${{ steps.params.outputs.version }}"
+          title: "Update Kunobi to v${{ steps.params.outputs.version }}"
           body: |
             Automated update triggered by new stable release.
 
-            - **Version**: `${{ steps.version.outputs.version }}`
-            - **SHA256**: `${{ steps.sha.outputs.sha256 }}`
-            - **Download URL**: https://r2.kunobi.ninja/v${{ steps.version.outputs.version }}/Kunobi_${{ steps.version.outputs.version }}_darwin_aarch64.dmg
-          branch: update-${{ steps.version.outputs.version }}
+            - **Version**: `${{ steps.params.outputs.version }}`
+            - **SHA256**: `${{ steps.params.outputs.sha256 }}`
+          branch: update-${{ steps.params.outputs.version }}
           base: main
