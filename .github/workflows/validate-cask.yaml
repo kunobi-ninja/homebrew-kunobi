@@ -21,20 +21,7 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
 
       - name: Validate cask file
-        run: |
-          CASK_FILE="Casks/kunobi.rb"
-
-          # Syntax check
-          ruby -c "$CASK_FILE"
-
-          # Required fields check
-          for field in version sha256 url name desc homepage app; do
-            if ! grep -qE "^\s*${field}\s" "$CASK_FILE"; then
-              echo "❌ Missing required field: $field"
-              exit 1
-            fi
-          done
-          echo "✅ Cask structure valid"
+        run: bash scripts/validate-cask.sh
 
       - name: Extract version, URL, and SHA256 from cask
         id: cask
