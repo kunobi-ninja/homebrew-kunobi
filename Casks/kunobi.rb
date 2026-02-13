@@ -24,3 +24,4 @@ cask "kunobi" do
     "~/Library/Saved Application State/ninja.kunobi.desktop.savedState",
   ]
 end
+validation
