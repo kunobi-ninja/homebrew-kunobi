@@ -13,11 +13,16 @@ on:
         required: true
 
 jobs:
+  # Step 1: Update cask file and push branch
   update-cask:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
+    outputs:
+      version: ${{ steps.params.outputs.version }}
+      sha256: ${{ steps.params.outputs.sha256 }}
+      changed: ${{ steps.diff.outputs.changed }}
+      branch: ${{ steps.branch.outputs.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,16 +57,66 @@ jobs:
           echo "Updated Casks/kunobi.rb:"
           cat Casks/kunobi.rb
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Update Kunobi to v${{ steps.params.outputs.version }}"
-          title: "Update Kunobi to v${{ steps.params.outputs.version }}"
-          body: |
-            Automated update triggered by new stable release.
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet Casks/kunobi.rb; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Cask already up to date, skipping"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
 
-            - **Version**: `${{ steps.params.outputs.version }}`
-            - **SHA256**: `${{ steps.params.outputs.sha256 }}`
-          branch: update-${{ steps.params.outputs.version }}
-          base: main
+      - name: Push update branch
+        if: steps.diff.outputs.changed == 'true'
+        id: branch
+        env:
+          VERSION: ${{ steps.params.outputs.version }}
+        run: |
+          BRANCH="update-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add Casks/kunobi.rb
+          git commit -m "Update Kunobi to v${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+          echo "name=$BRANCH" >> $GITHUB_OUTPUT
+
+  # Step 2: Validate the updated cask (download DMG, verify SHA256)
+  validate:
+    needs: update-cask
+    if: needs.update-cask.outputs.changed == 'true'
+    uses: ./.github/workflows/validate-cask.yaml
+    with:
+      ref: ${{ needs.update-cask.outputs.branch }}
+
+  # Step 3: Create PR only if validation passes
+  create-pr:
+    needs: [update-cask, validate]
+    if: needs.update-cask.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.update-cask.outputs.version }}
+          SHA256: ${{ needs.update-cask.outputs.sha256 }}
+          BRANCH: ${{ needs.update-cask.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$BRANCH" \
+            --base main \
+            --title "Update Kunobi to v${VERSION}" \
+            --body "$(cat <<EOF
+          > 🤖 Auto-generated and validated by [update-cask](${RUN_URL}) workflow
+
+          - **Version**: \`${VERSION}\`
+          - **SHA256**: \`${SHA256}\`
+          - **DMG checksum**: ✅ Verified
+          EOF
+          )"

@@ -4,12 +4,25 @@ on:
   pull_request:
     paths:
       - 'Casks/*.rb'
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout for validation'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        if: inputs.ref != ''
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/checkout@v4
+        if: inputs.ref == ''
 
       - name: Extract version, URL, and SHA256 from cask
         id: cask
