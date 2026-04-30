@@ -1,6 +1,6 @@
 cask "kunobi" do
-  version "0.1.0-beta.32"
-  sha256 "bc3ca0ef49dad5ebdf1a7f923735166f5cb4236bf3535a9249a678794b49f30f"
+  version "0.1.0-beta.33"
+  sha256 "80203bd0f59d586bfc591d94a3cc98fd0d89ea48b73cd69aa6936c31df7d9270"
 
   url "https://r2.kunobi.ninja/v#{version}/Kunobi_#{version}_darwin_aarch64.dmg?utm_source=brew"
   name "Kunobi"
