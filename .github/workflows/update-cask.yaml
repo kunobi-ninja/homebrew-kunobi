@@ -11,6 +11,14 @@ on:
       sha256:
         description: 'SHA256 of the darwin_aarch64.dmg'
         required: true
+      channel:
+        description: 'Release channel'
+        required: false
+        type: choice
+        options:
+          - stable
+          - unstable
+        default: stable
 
 jobs:
   # Step 1: Update cask file and push branch
@@ -21,46 +29,77 @@ jobs:
     outputs:
       version: ${{ steps.params.outputs.version }}
       sha256: ${{ steps.params.outputs.sha256 }}
+      channel: ${{ steps.params.outputs.channel }}
+      cask_file: ${{ steps.cask.outputs.file }}
+      cask_label: ${{ steps.cask.outputs.label }}
       changed: ${{ steps.diff.outputs.changed }}
       branch: ${{ steps.branch.outputs.name }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get version and sha256
+      - name: Get version, sha256, and channel
         id: params
         env:
           DISPATCH_VERSION: ${{ github.event.client_payload.version }}
           DISPATCH_SHA256: ${{ github.event.client_payload.sha256 }}
+          DISPATCH_CHANNEL: ${{ github.event.client_payload.channel }}
           INPUT_VERSION: ${{ github.event.inputs.version }}
           INPUT_SHA256: ${{ github.event.inputs.sha256 }}
+          INPUT_CHANNEL: ${{ github.event.inputs.channel }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "repository_dispatch" ]; then
             VERSION="$DISPATCH_VERSION"
             SHA256="$DISPATCH_SHA256"
+            CHANNEL="${DISPATCH_CHANNEL:-stable}"
           else
             VERSION="$INPUT_VERSION"
             SHA256="$INPUT_SHA256"
+            CHANNEL="${INPUT_CHANNEL:-stable}"
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-          echo "Updating to version: $VERSION"
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "Updating to version: $VERSION (channel: $CHANNEL)"
           echo "SHA256: $SHA256"
+
+      - name: Resolve cask file from channel
+        id: cask
+        env:
+          CHANNEL: ${{ steps.params.outputs.channel }}
+        run: |
+          case "$CHANNEL" in
+            stable)
+              echo "file=Casks/kunobi.rb"      >> $GITHUB_OUTPUT
+              echo "label=Kunobi"              >> $GITHUB_OUTPUT
+              ;;
+            unstable)
+              echo "file=Casks/kunobi-unstable.rb" >> $GITHUB_OUTPUT
+              echo "label=Kunobi (Unstable)"      >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: unknown channel '$CHANNEL' (expected stable or unstable)" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Update Cask formula
         env:
           VERSION: ${{ steps.params.outputs.version }}
           SHA256: ${{ steps.params.outputs.sha256 }}
+          CASK_FILE: ${{ steps.cask.outputs.file }}
         run: |
-          sed -i "s/version \".*\"/version \"${VERSION}\"/" Casks/kunobi.rb
-          sed -i "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Casks/kunobi.rb
-          echo "Updated Casks/kunobi.rb:"
-          cat Casks/kunobi.rb
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" "$CASK_FILE"
+          sed -i "s/sha256 \".*\"/sha256 \"${SHA256}\"/" "$CASK_FILE"
+          echo "Updated $CASK_FILE:"
+          cat "$CASK_FILE"
 
       - name: Check for changes
         id: diff
+        env:
+          CASK_FILE: ${{ steps.cask.outputs.file }}
         run: |
-          if git diff --quiet Casks/kunobi.rb; then
+          if git diff --quiet "$CASK_FILE"; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "ℹ️ Cask already up to date, skipping"
           else
@@ -72,13 +111,16 @@ jobs:
         id: branch
         env:
           VERSION: ${{ steps.params.outputs.version }}
+          CHANNEL: ${{ steps.params.outputs.channel }}
+          CASK_FILE: ${{ steps.cask.outputs.file }}
+          CASK_LABEL: ${{ steps.cask.outputs.label }}
         run: |
-          BRANCH="update-${VERSION}"
+          BRANCH="update-${CHANNEL}-${VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
-          git add Casks/kunobi.rb
-          git commit -m "Update Kunobi to v${VERSION}"
+          git add "$CASK_FILE"
+          git commit -m "Update ${CASK_LABEL} to v${VERSION}"
           git push --force-with-lease origin "$BRANCH"
           echo "name=$BRANCH" >> $GITHUB_OUTPUT
 
@@ -89,6 +131,7 @@ jobs:
     uses: ./.github/workflows/validate-cask.yaml
     with:
       ref: ${{ needs.update-cask.outputs.branch }}
+      cask_file: ${{ needs.update-cask.outputs.cask_file }}
 
   # Cleanup: delete branch if validation failed
   cleanup:
@@ -125,6 +168,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.update-cask.outputs.version }}
           SHA256: ${{ needs.update-cask.outputs.sha256 }}
+          CHANNEL: ${{ needs.update-cask.outputs.channel }}
+          CASK_LABEL: ${{ needs.update-cask.outputs.cask_label }}
           BRANCH: ${{ needs.update-cask.outputs.branch }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -132,10 +177,11 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --head "$BRANCH" \
             --base main \
-            --title "Update Kunobi to v${VERSION}" \
+            --title "Update ${CASK_LABEL} to v${VERSION}" \
             --body "$(cat <<EOF
           > 🤖 Auto-generated and validated by [update-cask](${RUN_URL}) workflow
 
+          - **Cask**: \`${CASK_LABEL}\` (channel: \`${CHANNEL}\`)
           - **Version**: \`${VERSION}\`
           - **SHA256**: \`${SHA256}\`
           - **DMG checksum**: ✅ Verified

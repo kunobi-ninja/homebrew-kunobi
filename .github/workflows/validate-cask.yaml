@@ -11,6 +11,11 @@ on:
         required: false
         type: string
         default: ''
+      cask_file:
+        description: 'Path to the cask file to validate (e.g. Casks/kunobi.rb)'
+        required: false
+        type: string
+        default: 'Casks/kunobi.rb'
 
 jobs:
   validate:
@@ -20,24 +25,69 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - name: Validate cask file
-        run: bash scripts/validate-cask.sh
+      - name: Resolve cask files to validate
+        id: files
+        env:
+          INPUT_FILE: ${{ inputs.cask_file }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          # workflow_call: validate the specific file passed in.
+          # pull_request: validate every cask in Casks/ (PR may touch any).
+          if [ "$EVENT_NAME" = "workflow_call" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "files<<EOF" >> $GITHUB_OUTPUT
+            echo "${INPUT_FILE:-Casks/kunobi.rb}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            {
+              echo "files<<EOF"
+              ls Casks/*.rb
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate cask file(s) — syntax and structure
+        env:
+          FILES: ${{ steps.files.outputs.files }}
+        run: |
+          echo "$FILES" | while read -r f; do
+            [ -z "$f" ] && continue
+            echo "==> $f"
+            bash scripts/validate-cask.sh "$f"
+          done
 
       - name: Extract version, URL, and SHA256 from cask
         id: cask
+        env:
+          FILES: ${{ steps.files.outputs.files }}
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          CASK_FILE="Casks/kunobi.rb"
+          # On PRs we may have multiple casks; default to the first.
+          CASK_FILE=$(echo "$FILES" | grep -v '^$' | head -1)
+
+          # If running on a PR, prefer the cask that actually changed
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF" ]; then
+            CHANGED=$(git diff --name-only "origin/${BASE_REF}"...HEAD -- 'Casks/*.rb' | head -1 || true)
+            if [ -n "$CHANGED" ]; then
+              CASK_FILE="$CHANGED"
+            fi
+          fi
+
+          echo "Validating downloads against: $CASK_FILE"
 
           VERSION=$(grep -E '^\s*version\s+"' "$CASK_FILE" | sed 's/.*version "\([^"]*\)".*/\1/')
           SHA256=$(grep -E '^\s*sha256\s+"' "$CASK_FILE" | sed 's/.*sha256 "\([^"]*\)".*/\1/')
 
-          # Build URL from template
+          # Build URL from template (same template for stable + beta — per-channel
+          # split is on the cask file, not the artifact path)
           URL="https://r2.kunobi.ninja/v${VERSION}/Kunobi_${VERSION}_darwin_aarch64.dmg"
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
           echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "cask=$CASK_FILE" >> $GITHUB_OUTPUT
 
+          echo "Cask: $CASK_FILE"
           echo "Version: $VERSION"
           echo "Expected SHA256: $SHA256"
           echo "URL: $URL"
