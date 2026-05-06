@@ -1,15 +1,15 @@
-cask "kunobi" do
-  version "1.0.0"
-  sha256 "a6b6dc23ed6fa608b4b565643c14f045ec9f26b0fd35b23b94a7abf5d216bf77"
+cask "kunobi-unstable" do
+  version "0.1.0-beta.34"
+  sha256 "8670541a89c952c53099a2039a46f00718b0e5f281abffbbe4cdc1d53c2522ee"
 
   url "https://r2.kunobi.ninja/v#{version}/Kunobi_#{version}_darwin_aarch64.dmg?utm_source=brew"
-  name "Kunobi"
-  desc "Kubernetes dashboard and management tool"
+  name "Kunobi (Unstable)"
+  desc "Kubernetes dashboard and management tool — unstable channel (RC, beta, alpha)"
   homepage "https://kunobi.ninja"
 
   # Stable and unstable install the same Kunobi.app bundle (ninja.kunobi.desktop).
   # Users pick a channel; they cannot have both installed at once.
-  conflicts_with cask: "kunobi-ninja/kunobi/kunobi-unstable"
+  conflicts_with cask: "kunobi-ninja/kunobi/kunobi"
 
   # Only Apple Silicon builds are available
   depends_on arch: :arm64

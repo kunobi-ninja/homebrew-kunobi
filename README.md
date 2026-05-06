@@ -4,9 +4,29 @@
 
 ## Installation
 
+Two channels are available:
+
+| Cask | Channel | When to use |
+|------|---------|-------------|
+| `kunobi` | stable | Production releases — most users |
+| `kunobi-unstable` | unstable | Pre-releases (RC, beta, alpha) — testers and early adopters |
+
+Both casks install the same `Kunobi.app` bundle (`ninja.kunobi.desktop`); they are mutually exclusive — pick one.
+
 ```bash
 brew tap kunobi-ninja/kunobi
+
+# Stable
 brew install --cask kunobi
+
+# Unstable (pre-releases)
+brew install --cask kunobi-unstable
+```
+
+To switch channels, uninstall one and install the other:
+
+```bash
+brew uninstall --cask kunobi && brew install --cask kunobi-unstable
 ```
 
 ## Requirements
