@@ -24,14 +24,21 @@ on:
         required: true
 
 jobs:
+  # Step 1: render the formula and push it to an update branch (no direct push
+  # to main — mirrors the Cask updater's validated-PR flow in update-cask.yaml).
   update-formula:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.params.outputs.version }}
+      channel: ${{ steps.params.outputs.channel }}
+      formula_file: ${{ steps.formula.outputs.file }}
+      formula_label: ${{ steps.formula.outputs.label }}
+      changed: ${{ steps.diff.outputs.changed }}
+      branch: ${{ steps.branch.outputs.name }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Resolve params (version, channel, sha256)
         id: params
@@ -102,13 +109,13 @@ jobs:
               echo "file=Formula/kache.rb"          >> "$GITHUB_OUTPUT"
               echo "class=Kache"                     >> "$GITHUB_OUTPUT"
               echo "label=kache"                     >> "$GITHUB_OUTPUT"
-              echo "desc=Fast disk and memory caching CLI" >> "$GITHUB_OUTPUT"
+              echo "desc=Content-addressed zero-copy Rust build cache" >> "$GITHUB_OUTPUT"
               ;;
             unstable)
               echo "file=Formula/kache-unstable.rb"  >> "$GITHUB_OUTPUT"
               echo "class=KacheUnstable"             >> "$GITHUB_OUTPUT"
               echo "label=kache (unstable)"          >> "$GITHUB_OUTPUT"
-              echo "desc=Fast disk and memory caching CLI — unstable channel (RC, beta, alpha)" >> "$GITHUB_OUTPUT"
+              echo "desc=Content-addressed zero-copy Rust build cache (unstable channel)" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Error: unknown channel '$CHANNEL' (expected stable or unstable)" >&2
@@ -164,21 +171,89 @@ jobs:
           set -euo pipefail
           if git diff --quiet "$FORMULA_FILE"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "ℹ️ Formula already up to date, skipping commit"
+            echo "ℹ️ Formula already up to date, skipping"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit and push to main
+      - name: Push update branch
         if: steps.diff.outputs.changed == 'true'
+        id: branch
         env:
           VERSION: ${{ steps.params.outputs.version }}
+          CHANNEL: ${{ steps.params.outputs.channel }}
           FORMULA_FILE: ${{ steps.formula.outputs.file }}
           FORMULA_LABEL: ${{ steps.formula.outputs.label }}
         run: |
           set -euo pipefail
+          BRANCH="update-kache-${CHANNEL}-${VERSION}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
           git add "$FORMULA_FILE"
           git commit -m "Update ${FORMULA_LABEL} to v${VERSION}"
-          git push origin HEAD:main
+          git push --force-with-lease origin "$BRANCH"
+          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+  # Step 2: validate the rendered formula (download both macOS tarballs, verify
+  # each SHA256) before anything can be merged.
+  validate:
+    needs: update-formula
+    if: needs.update-formula.outputs.changed == 'true'
+    uses: ./.github/workflows/validate-formula.yaml
+    with:
+      ref: ${{ needs.update-formula.outputs.branch }}
+      formula_file: ${{ needs.update-formula.outputs.formula_file }}
+
+  # Cleanup: delete the update branch if validation failed.
+  cleanup:
+    needs: [update-formula, validate]
+    if: >-
+      always()
+      && needs.validate.result == 'failure'
+      && needs.update-formula.outputs.branch != ''
+      && needs.update-formula.outputs.branch != 'main'
+      && needs.update-formula.outputs.branch != 'master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete failed branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ needs.update-formula.outputs.branch }}
+        run: |
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$BRANCH" || true
+          echo "🧹 Deleted branch $BRANCH after failed validation"
+
+  # Step 3: open a PR only once validation passes.
+  create-pr:
+    needs: [update-formula, validate]
+    if: needs.update-formula.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.update-formula.outputs.version }}
+          CHANNEL: ${{ needs.update-formula.outputs.channel }}
+          FORMULA_LABEL: ${{ needs.update-formula.outputs.formula_label }}
+          BRANCH: ${{ needs.update-formula.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$BRANCH" \
+            --base main \
+            --title "Update ${FORMULA_LABEL} to v${VERSION}" \
+            --body "$(cat <<EOF
+          > 🤖 Auto-generated and validated by [update-kache-formula](${RUN_URL}) workflow
+
+          - **Formula**: \`${FORMULA_LABEL}\` (channel: \`${CHANNEL}\`)
+          - **Version**: \`${VERSION}\`
+          - **Tarball checksums**: ✅ Verified (aarch64 + x86_64)
+          EOF
+          )"

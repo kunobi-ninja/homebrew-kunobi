@@ -1,5 +1,5 @@
 class KacheUnstable < Formula
-  desc "Fast disk and memory caching CLI — unstable channel (RC, beta, alpha)"
+  desc "Content-addressed zero-copy Rust build cache (unstable channel)"
   homepage "https://github.com/kunobi-ninja/kache"
   version "0.0.0"
 

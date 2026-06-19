@@ -1,0 +1,88 @@
+name: Validate Formula
+
+on:
+  pull_request:
+    paths:
+      - 'Formula/*.rb'
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout for validation'
+        required: false
+        type: string
+        default: ''
+      formula_file:
+        description: 'Path to the formula file to validate (e.g. Formula/kache.rb)'
+        required: false
+        type: string
+        default: 'Formula/kache.rb'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Resolve formula files to validate
+        id: files
+        env:
+          INPUT_FILE: ${{ inputs.formula_file }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # workflow_call/dispatch: validate the specific file passed in.
+          # pull_request: validate every formula in Formula/ (PR may touch any).
+          if [ "$EVENT_NAME" = "workflow_call" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            {
+              echo "files<<EOF"
+              echo "${INPUT_FILE:-Formula/kache.rb}"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "files<<EOF"
+              ls Formula/*.rb
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate formula(e) — Ruby syntax + checksum of every macOS tarball
+        env:
+          FILES: ${{ steps.files.outputs.files }}
+        run: |
+          set -euo pipefail
+          echo "$FILES" | while read -r F; do
+            [ -z "$F" ] && continue
+            echo "==> $F"
+
+            # 1) Ruby syntax must parse.
+            ruby -c "$F"
+
+            # 2) Pair each release URL with the sha256 that follows it. The
+            #    formula lists on_arm (url, sha256) then on_intel (url, sha256),
+            #    so URL line N corresponds to sha256 line N. Portable extraction
+            #    (no gawk-only 3-arg match) so it runs on the runner's mawk too.
+            URLS=$(grep -oE 'https://[^"]+\.tar\.gz' "$F" || true)
+            SHAS=$(grep -oE '[0-9a-f]{64}' "$F" || true)
+            if [ -z "$URLS" ] || [ -z "$SHAS" ]; then
+              echo "❌ $F: could not extract url/sha256 pairs" >&2
+              exit 1
+            fi
+
+            paste <(printf '%s\n' "$URLS") <(printf '%s\n' "$SHAS") | while read -r URL SHA; do
+              [ -z "$URL" ] && continue
+              echo "  checking $URL"
+              curl -fSL "$URL" -o artifact.tar.gz
+              ACTUAL=$(shasum -a 256 artifact.tar.gz | cut -d ' ' -f1)
+              echo "    expected: $SHA"
+              echo "    actual:   $ACTUAL"
+              if [ "$SHA" != "$ACTUAL" ]; then
+                echo "  ❌ SHA256 mismatch for $URL" >&2
+                exit 1
+              fi
+              echo "  ✅ verified"
+              rm -f artifact.tar.gz
+            done
+          done

@@ -1,5 +1,5 @@
 class Kache < Formula
-  desc "Fast disk and memory caching CLI"
+  desc "Content-addressed zero-copy Rust build cache"
   homepage "https://github.com/kunobi-ninja/kache"
   version "0.0.0"
 
