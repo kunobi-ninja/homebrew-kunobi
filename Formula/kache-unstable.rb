@@ -1,5 +1,5 @@
 class KacheUnstable < Formula
-  desc "Content-addressed zero-copy Rust build cache (unstable channel)"
+  desc "Content-addressed zero-copy build cache for Rust, C/C++ and more (unstable)"
   homepage "https://github.com/kunobi-ninja/kache"
   version "0.0.0"
 

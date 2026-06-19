@@ -109,13 +109,13 @@ jobs:
               echo "file=Formula/kache.rb"          >> "$GITHUB_OUTPUT"
               echo "class=Kache"                     >> "$GITHUB_OUTPUT"
               echo "label=kache"                     >> "$GITHUB_OUTPUT"
-              echo "desc=Content-addressed zero-copy Rust build cache" >> "$GITHUB_OUTPUT"
+              echo "desc=Content-addressed zero-copy build cache for Rust, C/C++ and more" >> "$GITHUB_OUTPUT"
               ;;
             unstable)
               echo "file=Formula/kache-unstable.rb"  >> "$GITHUB_OUTPUT"
               echo "class=KacheUnstable"             >> "$GITHUB_OUTPUT"
               echo "label=kache (unstable)"          >> "$GITHUB_OUTPUT"
-              echo "desc=Content-addressed zero-copy Rust build cache (unstable channel)" >> "$GITHUB_OUTPUT"
+              echo "desc=Content-addressed zero-copy build cache for Rust, C/C++ and more (unstable)" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Error: unknown channel '$CHANNEL' (expected stable or unstable)" >&2
