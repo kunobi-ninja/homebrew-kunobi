@@ -1,0 +1,259 @@
+name: Update kache Formula
+
+on:
+  repository_dispatch:
+    types: [update-kache-formula]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to update to (without v prefix)'
+        required: true
+      channel:
+        description: 'Release channel'
+        required: false
+        type: choice
+        options:
+          - stable
+          - unstable
+        default: stable
+      sha256_aarch64:
+        description: 'SHA256 of kache-aarch64-apple-darwin.tar.gz'
+        required: true
+      sha256_x86_64:
+        description: 'SHA256 of kache-x86_64-apple-darwin.tar.gz'
+        required: true
+
+jobs:
+  # Step 1: render the formula and push it to an update branch (no direct push
+  # to main — mirrors the Cask updater's validated-PR flow in update-cask.yaml).
+  update-formula:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.params.outputs.version }}
+      channel: ${{ steps.params.outputs.channel }}
+      formula_file: ${{ steps.formula.outputs.file }}
+      formula_label: ${{ steps.formula.outputs.label }}
+      changed: ${{ steps.diff.outputs.changed }}
+      branch: ${{ steps.branch.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve params (version, channel, sha256)
+        id: params
+        env:
+          DISPATCH_VERSION: ${{ github.event.client_payload.version }}
+          DISPATCH_CHANNEL: ${{ github.event.client_payload.channel }}
+          DISPATCH_SHA256_AARCH64: ${{ github.event.client_payload.sha256_aarch64 }}
+          DISPATCH_SHA256_X86_64: ${{ github.event.client_payload.sha256_x86_64 }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+          INPUT_CHANNEL: ${{ github.event.inputs.channel }}
+          INPUT_SHA256_AARCH64: ${{ github.event.inputs.sha256_aarch64 }}
+          INPUT_SHA256_X86_64: ${{ github.event.inputs.sha256_x86_64 }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "repository_dispatch" ]; then
+            VERSION="$DISPATCH_VERSION"
+            CHANNEL_RAW="$DISPATCH_CHANNEL"
+            SHA256_AARCH64="$DISPATCH_SHA256_AARCH64"
+            SHA256_X86_64="$DISPATCH_SHA256_X86_64"
+          else
+            VERSION="$INPUT_VERSION"
+            CHANNEL_RAW="$INPUT_CHANNEL"
+            SHA256_AARCH64="$INPUT_SHA256_AARCH64"
+            SHA256_X86_64="$INPUT_SHA256_X86_64"
+          fi
+
+          # Backward compatibility: callers that don't send `channel` are treated
+          # as stable, but only if the version matches the stable SemVer pattern
+          # (^x.y.z$). This prevents a pre-release from silently landing on the
+          # stable formula.
+          if [ -z "$CHANNEL_RAW" ]; then
+            if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              CHANNEL="stable"
+              echo "ℹ️ channel not provided — defaulted to 'stable' (version matches stable pattern)"
+            else
+              echo "Error: channel not provided and version '$VERSION' does not match the stable" >&2
+              echo "       pattern (^[0-9]+\\.[0-9]+\\.[0-9]+\$). Refusing to default to stable for" >&2
+              echo "       a pre-release version. Please pass channel explicitly." >&2
+              exit 1
+            fi
+          else
+            CHANNEL="$CHANNEL_RAW"
+          fi
+
+          if [ -z "$VERSION" ] || [ -z "$SHA256_AARCH64" ] || [ -z "$SHA256_X86_64" ]; then
+            echo "Error: version, sha256_aarch64 and sha256_x86_64 are all required" >&2
+            exit 1
+          fi
+
+          {
+            echo "version=$VERSION"
+            echo "channel=$CHANNEL"
+            echo "sha256_aarch64=$SHA256_AARCH64"
+            echo "sha256_x86_64=$SHA256_X86_64"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Updating kache to v$VERSION (channel: $CHANNEL)"
+
+      - name: Resolve formula file from channel
+        id: formula
+        env:
+          CHANNEL: ${{ steps.params.outputs.channel }}
+        run: |
+          set -euo pipefail
+          case "$CHANNEL" in
+            stable)
+              echo "file=Formula/kache.rb"          >> "$GITHUB_OUTPUT"
+              echo "class=Kache"                     >> "$GITHUB_OUTPUT"
+              echo "label=kache"                     >> "$GITHUB_OUTPUT"
+              echo "desc=Content-addressed zero-copy build cache for Rust, C/C++ and more" >> "$GITHUB_OUTPUT"
+              ;;
+            unstable)
+              echo "file=Formula/kache-unstable.rb"  >> "$GITHUB_OUTPUT"
+              echo "class=KacheUnstable"             >> "$GITHUB_OUTPUT"
+              echo "label=kache (unstable)"          >> "$GITHUB_OUTPUT"
+              echo "desc=Content-addressed zero-copy build cache for Rust, C/C++ and more (unstable)" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Error: unknown channel '$CHANNEL' (expected stable or unstable)" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Render formula
+        env:
+          VERSION: ${{ steps.params.outputs.version }}
+          SHA256_AARCH64: ${{ steps.params.outputs.sha256_aarch64 }}
+          SHA256_X86_64: ${{ steps.params.outputs.sha256_x86_64 }}
+          FORMULA_FILE: ${{ steps.formula.outputs.file }}
+          FORMULA_CLASS: ${{ steps.formula.outputs.class }}
+          FORMULA_DESC: ${{ steps.formula.outputs.desc }}
+        run: |
+          set -euo pipefail
+          mkdir -p Formula
+          cat > "$FORMULA_FILE" <<EOF
+          class ${FORMULA_CLASS} < Formula
+            desc "${FORMULA_DESC}"
+            homepage "https://github.com/kunobi-ninja/kache"
+            version "${VERSION}"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/kunobi-ninja/kache/releases/download/v${VERSION}/kache-aarch64-apple-darwin.tar.gz"
+                sha256 "${SHA256_AARCH64}"
+              end
+              on_intel do
+                url "https://github.com/kunobi-ninja/kache/releases/download/v${VERSION}/kache-x86_64-apple-darwin.tar.gz"
+                sha256 "${SHA256_X86_64}"
+              end
+            end
+
+            def install
+              bin.install "kache"
+            end
+
+            test do
+              system "#{bin}/kache", "--version"
+            end
+          end
+          EOF
+          echo "Rendered $FORMULA_FILE:"
+          cat "$FORMULA_FILE"
+
+      - name: Check for changes
+        id: diff
+        env:
+          FORMULA_FILE: ${{ steps.formula.outputs.file }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet "$FORMULA_FILE"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️ Formula already up to date, skipping"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push update branch
+        if: steps.diff.outputs.changed == 'true'
+        id: branch
+        env:
+          VERSION: ${{ steps.params.outputs.version }}
+          CHANNEL: ${{ steps.params.outputs.channel }}
+          FORMULA_FILE: ${{ steps.formula.outputs.file }}
+          FORMULA_LABEL: ${{ steps.formula.outputs.label }}
+        run: |
+          set -euo pipefail
+          BRANCH="update-kache-${CHANNEL}-${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "$FORMULA_FILE"
+          git commit -m "Update ${FORMULA_LABEL} to v${VERSION}"
+          git push --force-with-lease origin "$BRANCH"
+          echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+
+  # Step 2: validate the rendered formula (download both macOS tarballs, verify
+  # each SHA256) before anything can be merged.
+  validate:
+    needs: update-formula
+    if: needs.update-formula.outputs.changed == 'true'
+    uses: ./.github/workflows/validate-formula.yaml
+    with:
+      ref: ${{ needs.update-formula.outputs.branch }}
+      formula_file: ${{ needs.update-formula.outputs.formula_file }}
+
+  # Cleanup: delete the update branch if validation failed.
+  cleanup:
+    needs: [update-formula, validate]
+    if: >-
+      always()
+      && needs.validate.result == 'failure'
+      && needs.update-formula.outputs.branch != ''
+      && needs.update-formula.outputs.branch != 'main'
+      && needs.update-formula.outputs.branch != 'master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete failed branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ needs.update-formula.outputs.branch }}
+        run: |
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$BRANCH" || true
+          echo "🧹 Deleted branch $BRANCH after failed validation"
+
+  # Step 3: open a PR only once validation passes.
+  create-pr:
+    needs: [update-formula, validate]
+    if: needs.update-formula.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.update-formula.outputs.version }}
+          CHANNEL: ${{ needs.update-formula.outputs.channel }}
+          FORMULA_LABEL: ${{ needs.update-formula.outputs.formula_label }}
+          BRANCH: ${{ needs.update-formula.outputs.branch }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --head "$BRANCH" \
+            --base main \
+            --title "Update ${FORMULA_LABEL} to v${VERSION}" \
+            --body "$(cat <<EOF
+          > 🤖 Auto-generated and validated by [update-kache-formula](${RUN_URL}) workflow
+
+          - **Formula**: \`${FORMULA_LABEL}\` (channel: \`${CHANNEL}\`)
+          - **Version**: \`${VERSION}\`
+          - **Tarball checksums**: ✅ Verified (aarch64 + x86_64)
+          EOF
+          )"
