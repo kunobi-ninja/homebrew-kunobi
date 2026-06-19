@@ -1,8 +1,11 @@
 # Homebrew Tap for Kunobi
 
-[Kunobi](https://kunobi.ninja) is a Kubernetes dashboard and management tool.
+This tap provides two packages:
 
-## Installation
+- **[Kunobi](https://kunobi.ninja)** — a Kubernetes dashboard and management tool (desktop app, installed as a cask).
+- **[kache](https://github.com/kunobi-ninja/kache)** — a content-addressed, zero-copy build cache for Rust, C/C++ and more (CLI, installed as a formula). Jump to [kache (CLI)](#kache-cli).
+
+## Kunobi (desktop app)
 
 Two channels are available:
 
@@ -78,8 +81,50 @@ To remoce tap:
 brew untap kunobi-ninja/kunobi
 ```
 
+## kache (CLI)
+
+[kache](https://github.com/kunobi-ninja/kache) is a content-addressed, zero-copy build cache for Rust, C/C++ and more.
+
+Two channels are available:
+
+| Formula | Channel | When to use |
+|---------|---------|-------------|
+| `kache` | stable | Production releases — most users |
+| `kache-unstable` | unstable | Pre-releases (RC, beta) — testers and early adopters |
+
+The two formulae have different names, so both can be installed side by side.
+
+```bash
+brew tap kunobi-ninja/kunobi
+
+# Stable
+brew install kache
+
+# Unstable (pre-releases)
+brew install kache-unstable
+```
+
+### Requirements
+
+- **macOS** on Apple Silicon (arm64) or Intel (x86_64).
+
+### Upgrading
+
+```bash
+brew upgrade kache
+```
+
+### Uninstallation
+
+```bash
+brew uninstall kache              # or: brew uninstall kache-unstable
+brew untap kunobi-ninja/kunobi    # removes the tap (also removes the Kunobi cask)
+```
+
 ## Links
 
 - [Kunobi Website](https://kunobi.ninja)
-- [GitHub Repository](https://github.com/zondax/kunobi-frontend)
-- [Release Notes](https://kunobi.ninja/changelog)
+- [Kunobi GitHub Repository](https://github.com/zondax/kunobi-frontend)
+- [Kunobi Release Notes](https://kunobi.ninja/changelog)
+- [kache GitHub Repository](https://github.com/kunobi-ninja/kache)
+- [kache Releases](https://github.com/kunobi-ninja/kache/releases)
