@@ -48,7 +48,7 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Validate formula(e) — Ruby syntax + checksum of every macOS tarball
+      - name: Validate formula(e) — Ruby syntax + checksum of every tarball
         env:
           FILES: ${{ steps.files.outputs.files }}
         run: |
@@ -61,8 +61,9 @@ jobs:
             ruby -c "$F"
 
             # 2) Pair each release URL with the sha256 that follows it. The
-            #    formula lists on_arm (url, sha256) then on_intel (url, sha256),
-            #    so URL line N corresponds to sha256 line N. Portable extraction
+            #    formula lists, per OS block, on_arm (url, sha256) then on_intel
+            #    (url, sha256), so URL line N corresponds to sha256 line N across
+            #    all on_macos + on_linux blocks. Portable extraction
             #    (no gawk-only 3-arg match) so it runs on the runner's mawk too.
             URLS=$(grep -oE 'https://[^"]+\.tar\.gz' "$F" || true)
             SHAS=$(grep -oE '[0-9a-f]{64}' "$F" || true)
