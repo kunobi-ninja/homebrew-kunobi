@@ -30,6 +30,6 @@ class KacheUnstable < Formula
   end
 
   test do
-    system "#{bin}/kache", "--version"
+    system bin/"kache", "--version"
   end
 end
