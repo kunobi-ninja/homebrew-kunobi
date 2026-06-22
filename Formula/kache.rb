@@ -1,7 +1,6 @@
 class Kache < Formula
   desc "Content-addressed zero-copy build cache for Rust, C/C++ and more"
   homepage "https://github.com/kunobi-ninja/kache"
-  version "0.6.0"
 
   on_macos do
     on_arm do
@@ -30,6 +29,6 @@ class Kache < Formula
   end
 
   test do
-    system "#{bin}/kache", "--version"
+    system bin/"kache", "--version"
   end
 end

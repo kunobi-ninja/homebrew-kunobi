@@ -144,6 +144,7 @@ jobs:
       - name: Render formula
         env:
           VERSION: ${{ steps.params.outputs.version }}
+          CHANNEL: ${{ steps.params.outputs.channel }}
           SHA256_AARCH64: ${{ steps.params.outputs.sha256_aarch64 }}
           SHA256_X86_64: ${{ steps.params.outputs.sha256_x86_64 }}
           SHA256_LINUX_AARCH64: ${{ steps.params.outputs.sha256_linux_aarch64 }}
@@ -187,10 +188,21 @@ jobs:
             end
 
             test do
-              system "#{bin}/kache", "--version"
+              system bin/"kache", "--version"
             end
           end
           EOF
+
+          # Homebrew scans the version from the stable GitHub release URL
+          # (.../download/vX.Y.Z/...), so an explicit \`version\` stanza is
+          # redundant there and \`brew audit --strict\` flags it. Pre-release
+          # tags (rc/beta) are NOT scanned the same way, so the stanza stays for
+          # the unstable channel.
+          if [ "$CHANNEL" = "stable" ]; then
+            sed -i.bak '/^  version "/d' "$FORMULA_FILE"
+            rm -f "${FORMULA_FILE}.bak"
+          fi
+
           echo "Rendered $FORMULA_FILE:"
           cat "$FORMULA_FILE"
 
