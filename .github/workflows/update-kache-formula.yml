@@ -22,6 +22,12 @@ on:
       sha256_x86_64:
         description: 'SHA256 of kache-x86_64-apple-darwin.tar.gz'
         required: true
+      sha256_linux_aarch64:
+        description: 'SHA256 of kache-aarch64-unknown-linux-musl.tar.gz'
+        required: true
+      sha256_linux_x86_64:
+        description: 'SHA256 of kache-x86_64-unknown-linux-musl.tar.gz'
+        required: true
 
 jobs:
   # Step 1: render the formula and push it to an update branch (no direct push
@@ -47,10 +53,14 @@ jobs:
           DISPATCH_CHANNEL: ${{ github.event.client_payload.channel }}
           DISPATCH_SHA256_AARCH64: ${{ github.event.client_payload.sha256_aarch64 }}
           DISPATCH_SHA256_X86_64: ${{ github.event.client_payload.sha256_x86_64 }}
+          DISPATCH_SHA256_LINUX_AARCH64: ${{ github.event.client_payload.sha256_linux_aarch64 }}
+          DISPATCH_SHA256_LINUX_X86_64: ${{ github.event.client_payload.sha256_linux_x86_64 }}
           INPUT_VERSION: ${{ github.event.inputs.version }}
           INPUT_CHANNEL: ${{ github.event.inputs.channel }}
           INPUT_SHA256_AARCH64: ${{ github.event.inputs.sha256_aarch64 }}
           INPUT_SHA256_X86_64: ${{ github.event.inputs.sha256_x86_64 }}
+          INPUT_SHA256_LINUX_AARCH64: ${{ github.event.inputs.sha256_linux_aarch64 }}
+          INPUT_SHA256_LINUX_X86_64: ${{ github.event.inputs.sha256_linux_x86_64 }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
@@ -59,11 +69,15 @@ jobs:
             CHANNEL_RAW="$DISPATCH_CHANNEL"
             SHA256_AARCH64="$DISPATCH_SHA256_AARCH64"
             SHA256_X86_64="$DISPATCH_SHA256_X86_64"
+            SHA256_LINUX_AARCH64="$DISPATCH_SHA256_LINUX_AARCH64"
+            SHA256_LINUX_X86_64="$DISPATCH_SHA256_LINUX_X86_64"
           else
             VERSION="$INPUT_VERSION"
             CHANNEL_RAW="$INPUT_CHANNEL"
             SHA256_AARCH64="$INPUT_SHA256_AARCH64"
             SHA256_X86_64="$INPUT_SHA256_X86_64"
+            SHA256_LINUX_AARCH64="$INPUT_SHA256_LINUX_AARCH64"
+            SHA256_LINUX_X86_64="$INPUT_SHA256_LINUX_X86_64"
           fi
 
           # Backward compatibility: callers that don't send `channel` are treated
@@ -84,8 +98,10 @@ jobs:
             CHANNEL="$CHANNEL_RAW"
           fi
 
-          if [ -z "$VERSION" ] || [ -z "$SHA256_AARCH64" ] || [ -z "$SHA256_X86_64" ]; then
-            echo "Error: version, sha256_aarch64 and sha256_x86_64 are all required" >&2
+          if [ -z "$VERSION" ] || [ -z "$SHA256_AARCH64" ] || [ -z "$SHA256_X86_64" ] \
+             || [ -z "$SHA256_LINUX_AARCH64" ] || [ -z "$SHA256_LINUX_X86_64" ]; then
+            echo "Error: version, sha256_aarch64, sha256_x86_64, sha256_linux_aarch64 and" >&2
+            echo "       sha256_linux_x86_64 are all required" >&2
             exit 1
           fi
 
@@ -94,6 +110,8 @@ jobs:
             echo "channel=$CHANNEL"
             echo "sha256_aarch64=$SHA256_AARCH64"
             echo "sha256_x86_64=$SHA256_X86_64"
+            echo "sha256_linux_aarch64=$SHA256_LINUX_AARCH64"
+            echo "sha256_linux_x86_64=$SHA256_LINUX_X86_64"
           } >> "$GITHUB_OUTPUT"
 
           echo "Updating kache to v$VERSION (channel: $CHANNEL)"
@@ -128,6 +146,8 @@ jobs:
           VERSION: ${{ steps.params.outputs.version }}
           SHA256_AARCH64: ${{ steps.params.outputs.sha256_aarch64 }}
           SHA256_X86_64: ${{ steps.params.outputs.sha256_x86_64 }}
+          SHA256_LINUX_AARCH64: ${{ steps.params.outputs.sha256_linux_aarch64 }}
+          SHA256_LINUX_X86_64: ${{ steps.params.outputs.sha256_linux_x86_64 }}
           FORMULA_FILE: ${{ steps.formula.outputs.file }}
           FORMULA_CLASS: ${{ steps.formula.outputs.class }}
           FORMULA_DESC: ${{ steps.formula.outputs.desc }}
@@ -148,6 +168,17 @@ jobs:
               on_intel do
                 url "https://github.com/kunobi-ninja/kache/releases/download/v${VERSION}/kache-x86_64-apple-darwin.tar.gz"
                 sha256 "${SHA256_X86_64}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/kunobi-ninja/kache/releases/download/v${VERSION}/kache-aarch64-unknown-linux-musl.tar.gz"
+                sha256 "${SHA256_LINUX_AARCH64}"
+              end
+              on_intel do
+                url "https://github.com/kunobi-ninja/kache/releases/download/v${VERSION}/kache-x86_64-unknown-linux-musl.tar.gz"
+                sha256 "${SHA256_LINUX_X86_64}"
               end
             end
 
@@ -195,8 +226,8 @@ jobs:
           git push --force-with-lease origin "$BRANCH"
           echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
 
-  # Step 2: validate the rendered formula (download both macOS tarballs, verify
-  # each SHA256) before anything can be merged.
+  # Step 2: validate the rendered formula (download every macOS + Linux tarball,
+  # verify each SHA256) before anything can be merged.
   validate:
     needs: update-formula
     if: needs.update-formula.outputs.changed == 'true'
@@ -254,6 +285,6 @@ jobs:
 
           - **Formula**: \`${FORMULA_LABEL}\` (channel: \`${CHANNEL}\`)
           - **Version**: \`${VERSION}\`
-          - **Tarball checksums**: ✅ Verified (aarch64 + x86_64)
+          - **Tarball checksums**: ✅ Verified (macOS + Linux, aarch64 + x86_64)
           EOF
           )"
