@@ -4,6 +4,7 @@ This tap provides two packages:
 
 - **[Kunobi](https://kunobi.ninja)** — a Kubernetes dashboard and management tool (desktop app, installed as a cask).
 - **[kache](https://github.com/kunobi-ninja/kache)** — a content-addressed, zero-copy build cache for Rust, C/C++ and more (CLI, installed as a formula). Jump to [kache (CLI)](#kache-cli).
+- **[kobe](https://github.com/kunobi-ninja/kobe)** — a cluster pool operator CLI for instant CI/dev cluster provisioning (CLI, installed as a formula). Jump to [kobe (CLI)](#kobe-cli).
 
 ## Kunobi (desktop app)
 
@@ -121,6 +122,47 @@ brew uninstall kache              # or: brew uninstall kache-unstable
 brew untap kunobi-ninja/kunobi    # removes the tap (also removes the Kunobi cask)
 ```
 
+## kobe (CLI)
+
+[kobe](https://github.com/kunobi-ninja/kobe) is a cluster pool operator CLI for instant CI/dev cluster provisioning.
+
+Two channels are available:
+
+| Formula | Channel | When to use |
+|---------|---------|-------------|
+| `kobe` | stable | Production releases — most users |
+| `kobe-unstable` | unstable | Pre-releases (RC, beta) — testers and early adopters |
+
+The two formulae have different names, so both can be installed side by side.
+
+```bash
+brew tap kunobi-ninja/kunobi
+
+# Stable
+brew install kobe
+
+# Unstable (pre-releases)
+brew install kobe-unstable
+```
+
+### Requirements
+
+- **macOS** on Apple Silicon (arm64) or Intel (x86_64).
+- **Linux** on aarch64 or x86_64 (musl).
+
+### Upgrading
+
+```bash
+brew upgrade kobe
+```
+
+### Uninstallation
+
+```bash
+brew uninstall kobe              # or: brew uninstall kobe-unstable
+brew untap kunobi-ninja/kunobi    # removes the tap (also removes the Kunobi cask)
+```
+
 ## Links
 
 - [Kunobi Website](https://kunobi.ninja)
@@ -128,3 +170,5 @@ brew untap kunobi-ninja/kunobi    # removes the tap (also removes the Kunobi cas
 - [Kunobi Release Notes](https://kunobi.ninja/changelog)
 - [kache GitHub Repository](https://github.com/kunobi-ninja/kache)
 - [kache Releases](https://github.com/kunobi-ninja/kache/releases)
+- [kobe GitHub Repository](https://github.com/kunobi-ninja/kobe)
+- [kobe Releases](https://github.com/kunobi-ninja/kobe/releases)
