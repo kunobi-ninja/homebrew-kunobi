@@ -1,27 +1,27 @@
 class KacheUnstable < Formula
   desc "Content-addressed zero-copy build cache for Rust, C/C++ and more (unstable)"
   homepage "https://github.com/kunobi-ninja/kache"
-  version "0.8.0-rc.1"
+  version "0.9.0-rc.1"
 
   on_macos do
     on_arm do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.8.0-rc.1/kache-aarch64-apple-darwin.tar.gz"
-      sha256 "9a532aefa095a56748bcb2e542bc6fbebdb10cd5b8494e5796dd58d52f4b28cb"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.9.0-rc.1/kache-aarch64-apple-darwin.tar.gz"
+      sha256 "9e4947d6d2d01c08df234c32c4201cd3428ecf01baeea8f765441b2239e892b7"
     end
     on_intel do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.8.0-rc.1/kache-x86_64-apple-darwin.tar.gz"
-      sha256 "e86f87cb83ce966dcafce0983d88393809a58252c4aa8c2e4de291f1c5792d46"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.9.0-rc.1/kache-x86_64-apple-darwin.tar.gz"
+      sha256 "e82d7b7faf58b942b7272436174114aaf32f014c53787cf5f34f7f04608b64eb"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.8.0-rc.1/kache-aarch64-unknown-linux-musl.tar.gz"
-      sha256 "b3a33f4031cd67f7949f809e0e6b135882823e7f601816f674eaf200ff44daaf"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.9.0-rc.1/kache-aarch64-unknown-linux-musl.tar.gz"
+      sha256 "8dacdc5c43f88b6b3609d1e343f4ce17fce263264bfd13d77cc97c89671c1628"
     end
     on_intel do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.8.0-rc.1/kache-x86_64-unknown-linux-musl.tar.gz"
-      sha256 "0071e2a453fc23b7e9d89bf4ae976e371859e0c67e2944339dbb941ca6e94489"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.9.0-rc.1/kache-x86_64-unknown-linux-musl.tar.gz"
+      sha256 "5060e62561183c5846bfe115982bcd69c10d04cff25cc0e1e47dd2ca800bb218"
     end
   end
 
