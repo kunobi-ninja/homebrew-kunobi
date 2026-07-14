@@ -212,7 +212,14 @@ jobs:
           FORMULA_FILE: ${{ steps.formula.outputs.file }}
         run: |
           set -euo pipefail
-          if git diff --quiet "$FORMULA_FILE"; then
+          # `git diff` only considers TRACKED files. On the FIRST render of a
+          # formula the file is brand new and untracked, so a bare `git diff`
+          # reports "no change" — changed=false, validate/create-pr skip, and the
+          # formula is silently discarded. `--intent-to-add` registers the new
+          # path with the index so the diff can see it. Tracked formulas are
+          # unaffected: an unchanged one still diffs clean.
+          git add --intent-to-add "$FORMULA_FILE"
+          if git diff --quiet -- "$FORMULA_FILE"; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "ℹ️ Formula already up to date, skipping"
           else
