@@ -4,23 +4,23 @@ class Kache < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.16.0/kache-aarch64-apple-darwin.tar.gz"
-      sha256 "6ad80d3bbb33d7db1715d5a919edbdf755dc19ca22fa83797c659147f1f9e229"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.17.0/kache-aarch64-apple-darwin.tar.gz"
+      sha256 "8bb4140f6bbe2a69f75c7ac1c6d1746eab2215c58bdfb29931fb9d214823cb24"
     end
     on_intel do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.16.0/kache-x86_64-apple-darwin.tar.gz"
-      sha256 "fef8184980ba65e9c8eaddbac7da31a7f782d994d442e23cc0ec89f396d7e889"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.17.0/kache-x86_64-apple-darwin.tar.gz"
+      sha256 "a4a4afbf47a5ff1831472d801b61cb77e267aa4ddff5a1c8d486ffee86a1b0b8"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.16.0/kache-aarch64-unknown-linux-musl.tar.gz"
-      sha256 "6eabb67867022eecdbfffe43c16e75b5c5b561983742bda3c900a4cb4c50e4a7"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.17.0/kache-aarch64-unknown-linux-musl.tar.gz"
+      sha256 "bcb1319225419e9f9f6d465f81c9135b3eb541397eac1bad81adae7a9ca4821b"
     end
     on_intel do
-      url "https://github.com/kunobi-ninja/kache/releases/download/v0.16.0/kache-x86_64-unknown-linux-musl.tar.gz"
-      sha256 "caee657c662379475af2a0a7611ad32a6d053822036c1ec191bb8fd1c826d54b"
+      url "https://github.com/kunobi-ninja/kache/releases/download/v0.17.0/kache-x86_64-unknown-linux-musl.tar.gz"
+      sha256 "65ed65abbe4af2cd13c2e83052adccc26547d18a486f8de001e8996cadfc9bf7"
     end
   end
 
