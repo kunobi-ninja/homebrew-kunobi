@@ -275,7 +275,7 @@ jobs:
     if: needs.update-formula.outputs.changed == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
     steps:
       - name: Create Pull Request
@@ -287,7 +287,7 @@ jobs:
           BRANCH: ${{ needs.update-formula.outputs.branch }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          gh pr create \
+          PR_URL="$(gh pr create \
             --repo "$GITHUB_REPOSITORY" \
             --head "$BRANCH" \
             --base main \
@@ -300,3 +300,5 @@ jobs:
           - **Tarball checksums**: ✅ Verified (macOS + Linux, aarch64 + x86_64)
           EOF
           )"
+          )"
+          gh pr merge "$PR_URL" --auto --squash --delete-branch
