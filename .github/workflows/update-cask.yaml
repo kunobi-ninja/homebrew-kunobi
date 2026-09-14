@@ -207,4 +207,18 @@ jobs:
           EOF
           )"
           )"
-          gh pr merge "$PR_URL" --auto --squash --delete-branch
+          # Validate already ran via workflow_call. Do not use --auto: PRs
+          # opened with GITHUB_TOKEN never get pull_request checks, so
+          # auto-merge waits forever on action_required.
+          ok=0
+          for i in 1 2 3 4 5 8 13; do
+            if gh pr merge "$PR_URL" --squash --delete-branch; then
+              ok=1
+              break
+            fi
+            sleep "$i"
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::squash merge failed for $PR_URL"
+            exit 1
+          fi
