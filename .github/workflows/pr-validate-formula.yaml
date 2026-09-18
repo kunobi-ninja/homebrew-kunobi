@@ -1,0 +1,14 @@
+name: PR validate formula
+
+# `Validate Formula` reads the `inputs` context, which exists only for a
+# reusable call. Triggering it directly from `pull_request` made every
+# such run fail at startup, so formula PRs went unvalidated. This calls
+# it instead, with no inputs, which validates every file.
+on:
+  pull_request:
+    paths:
+      - 'Formula/*.rb'
+
+jobs:
+  validate:
+    uses: ./.github/workflows/validate-formula.yaml

@@ -1,0 +1,14 @@
+name: PR validate cask
+
+# `Validate Cask` reads the `inputs` context, which exists only for a
+# reusable call. Triggering it directly from `pull_request` made every such
+# run fail at startup, so cask PRs went unvalidated. This calls it instead,
+# with no inputs, which validates every cask.
+on:
+  pull_request:
+    paths:
+      - 'Casks/*.rb'
+
+jobs:
+  validate:
+    uses: ./.github/workflows/validate-cask.yaml

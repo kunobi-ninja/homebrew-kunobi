@@ -1,9 +1,6 @@
 name: Validate Cask
 
 on:
-  pull_request:
-    paths:
-      - 'Casks/*.rb'
   workflow_call:
     inputs:
       ref:
@@ -15,7 +12,7 @@ on:
         description: 'Path to the cask file to validate (e.g. Casks/kunobi.rb)'
         required: false
         type: string
-        default: 'Casks/kunobi.rb'
+        default: ''
 
 jobs:
   validate:
@@ -29,13 +26,14 @@ jobs:
         id: files
         env:
           INPUT_FILE: ${{ inputs.cask_file }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
-          # workflow_call: validate the specific file passed in.
-          # pull_request: validate every cask in Casks/ (PR may touch any).
-          if [ "$EVENT_NAME" = "workflow_call" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          # A caller that names a file validates that one. A bare call --
+          # the pull_request wrapper -- validates every cask, since the PR
+          # may touch any of them. `github.event_name` is the ORIGINAL event
+          # even here, so it cannot tell the two apart.
+          if [ -n "$INPUT_FILE" ]; then
             echo "files<<EOF" >> $GITHUB_OUTPUT
-            echo "${INPUT_FILE:-Casks/kunobi.rb}" >> $GITHUB_OUTPUT
+            echo "$INPUT_FILE" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
           else
             {

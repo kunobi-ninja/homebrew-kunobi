@@ -1,9 +1,6 @@
 name: Validate Formula
 
 on:
-  pull_request:
-    paths:
-      - 'Formula/*.rb'
   workflow_call:
     inputs:
       ref:
@@ -15,7 +12,7 @@ on:
         description: 'Path to the formula file to validate (e.g. Formula/kache.rb)'
         required: false
         type: string
-        default: 'Formula/kache.rb'
+        default: ''
 
 jobs:
   validate:
@@ -29,15 +26,16 @@ jobs:
         id: files
         env:
           INPUT_FILE: ${{ inputs.formula_file }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
-          # workflow_call/dispatch: validate the specific file passed in.
-          # pull_request: validate every formula in Formula/ (PR may touch any).
-          if [ "$EVENT_NAME" = "workflow_call" ] || [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          # A caller that names a file validates that one. A bare call --
+          # the pull_request wrapper -- validates every file, since the PR
+          # may touch any of them. `github.event_name` is the ORIGINAL
+          # event even here, so it cannot tell the two apart.
+          if [ -n "$INPUT_FILE" ]; then
             {
               echo "files<<EOF"
-              echo "${INPUT_FILE:-Formula/kache.rb}"
+              echo "$INPUT_FILE"
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
           else
