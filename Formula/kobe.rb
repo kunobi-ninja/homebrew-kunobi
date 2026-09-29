@@ -4,23 +4,23 @@ class Kobe < Formula
 
   on_macos do
     on_arm do
-      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.59.0/kobe-aarch64-apple-darwin.tar.gz"
-      sha256 "46af0f54fc4777704c568af3b887b237875d88a3c4c7f52cbf34b02891b6853f"
+      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.60.0/kobe-aarch64-apple-darwin.tar.gz"
+      sha256 "18854283883032d2d2aa4831070d30e0d9a951b73eb4e223940360aa0628ea9b"
     end
     on_intel do
-      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.59.0/kobe-x86_64-apple-darwin.tar.gz"
-      sha256 "1c6feb7aaac3c88ffac325cb96dbe9dd72245d3bdff40524394de907b379679b"
+      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.60.0/kobe-x86_64-apple-darwin.tar.gz"
+      sha256 "ff013534aec0bb028183856f08d34ebbac0ee9ae308faa05a5868dd9984f7d03"
     end
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.59.0/kobe-aarch64-unknown-linux-musl.tar.gz"
-      sha256 "e8cc44d28e8e7e364ed6cd96914dc4728c96be467983742e0d73cdf61051ffa2"
+      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.60.0/kobe-aarch64-unknown-linux-musl.tar.gz"
+      sha256 "d45a5a7da2ff656c8755a46eefada4621e3d169d8e03576402dded9837eb1c6c"
     end
     on_intel do
-      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.59.0/kobe-x86_64-unknown-linux-musl.tar.gz"
-      sha256 "d4f266c724c2330d49390017b5d96f54dc8357cb3f2f72d92c65dd278aff301d"
+      url "https://github.com/kunobi-ninja/kobe/releases/download/v0.60.0/kobe-x86_64-unknown-linux-musl.tar.gz"
+      sha256 "8d6fc86852051c6a21aa70219c798b9183e1948cf96a0fb968477cfafb7a25ef"
     end
   end
 
