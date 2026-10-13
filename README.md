@@ -109,6 +109,31 @@ brew install kache-unstable
 
 - **macOS** on Apple Silicon (arm64) or Intel (x86_64).
 
+### Background daemon
+
+Keep Kache's setup from installing its native service, then start the
+Homebrew-managed login daemon:
+
+```bash
+kache init --no-service
+brew services start kache
+```
+
+Use `brew services restart kache` after changing its service settings, and
+`brew services stop kache` to disable it. The service runs Kache through
+Homebrew's `opt` path, so every restart uses the upgraded binary.
+
+If Kache previously installed its native service (via `kache init` or
+`kache daemon install`), remove it before starting the Homebrew service:
+
+```bash
+kache daemon uninstall
+brew services start kache
+```
+
+Start a service for only one channel (`kache` or `kache-unstable`) at a time:
+the Kache daemon is a per-user singleton.
+
 ### Upgrading
 
 ```bash
