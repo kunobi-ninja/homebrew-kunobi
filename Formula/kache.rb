@@ -26,6 +26,7 @@ class Kache < Formula
 
   def install
     bin.install "kache"
+    bin.install "kache-engine" if (buildpath/"kache-engine").exist?
   end
 
   test do
