@@ -28,6 +28,8 @@ class KacheUnstable < Formula
   def install
     bin.install "kache"
     bin.install "kache-engine" if (buildpath/"kache-engine").exist?
+    bin.install "kache-clang-cl" if (buildpath/"kache-clang-cl").exist?
+    bin.install "kache-cl" if (buildpath/"kache-cl").exist?
   end
 
   test do
