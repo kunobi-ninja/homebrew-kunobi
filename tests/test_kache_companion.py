@@ -82,7 +82,7 @@ class CompanionInstallationTests(unittest.TestCase):
         )
         return formula, name
 
-    def install(self, layout, companion):
+    def install(self, layout, companion, launchers=False):
         with tempfile.TemporaryDirectory(prefix="kache formula ") as directory:
             root = Path(directory)
             if layout.startswith("rendered-"):
@@ -100,18 +100,32 @@ class CompanionInstallationTests(unittest.TestCase):
                 engine = source / "kache-engine"
                 engine.write_text(ENGINE)
                 engine.chmod(0o755)
+            if launchers:
+                for launcher_name in ["kache-clang-cl", "kache-cl"]:
+                    launcher = source / launcher_name
+                    launcher.write_text(FRONTEND)
+                    launcher.chmod(0o755)
             install = subprocess.run(
                 ["ruby", "-e", INSTALL, str(formula), name, str(source), str(destination)],
                 capture_output=True, text=True,
             )
             self.assertEqual(install.returncode, 0, install.stderr)
             expected = {"kache", "kache-engine"} if companion else {"kache"}
+            if launchers:
+                expected.update({"kache-clang-cl", "kache-cl"})
             self.assertEqual({file.name for file in destination.iterdir()}, expected)
             result = subprocess.run(
                 [str(destination / "kache"), "--version"],
                 check=True, capture_output=True, text=True,
             )
             self.assertEqual(result.stdout, "formula fixture\n")
+            if launchers:
+                for launcher_name in ["kache-clang-cl", "kache-cl"]:
+                    result = subprocess.run(
+                        [str(destination / launcher_name), "--version"],
+                        check=True, capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.stdout, "formula fixture\n")
 
     def test_legacy_archives_install_and_run(self):
         for layout in ["kache", "kache-unstable", "rendered-stable", "rendered-unstable"]:
@@ -122,6 +136,11 @@ class CompanionInstallationTests(unittest.TestCase):
         for layout in ["kache", "kache-unstable", "rendered-stable", "rendered-unstable"]:
             with self.subTest(layout=layout):
                 self.install(layout, companion=True)
+
+    def test_native_launcher_archives_install_and_run(self):
+        for layout in ["kache", "kache-unstable", "rendered-stable", "rendered-unstable"]:
+            with self.subTest(layout=layout):
+                self.install(layout, companion=True, launchers=True)
 
 
 if __name__ == "__main__":
