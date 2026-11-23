@@ -1,6 +1,6 @@
 cask "kunobi-unstable" do
-  version "2.0.0-rc.16"
-  sha256 "f9be6b37d8d9665fe68cb1c626ce31c0b7813fbec0989b9ff9deb893a0b9d0a0"
+  version "2.0.0-rc.17"
+  sha256 "4999237dae77cbc7029550fb852f1eef4825d23712593d326a022b1624793e7d"
 
   url "https://r2.kunobi.ninja/v#{version}/Kunobi_#{version}_darwin_aarch64.dmg?utm_source=brew"
   name "Kunobi (Unstable)"
